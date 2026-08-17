@@ -1,0 +1,30 @@
+# Muhit va maxfiy kalitlar — hech qachon commit qilinmasin
+.env
+.env.local
+
+# Ma'lumotlar bazasi (SQLite) — har bir muhitda o'zi yaratiladi
+*.db
+*.sqlite
+*.sqlite3
+
+# Foydalanuvchi yuklagan rasmlar (repoda saqlanmaydi)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Claude Code lokal sozlamalari (ichida tokenlar bo'lishi mumkin)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Muharrir / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

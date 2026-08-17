@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZooPet Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161A; --surface:#1E2127; --surface-2:#262A32; --line:#33383F;
+    --text:#F3F0E8; --text-dim:#9A9FA8; --amber:#FFB238; --green:#7FBF7F; --red:#E27575;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;}
+  h1,h2{font-family:'Fraunces',serif; font-weight:600; margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* Login */
+  #loginScreen{
+    height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+  }
+  #loginScreen .box{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:32px; width:320px;
+  }
+  input{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    padding:11px 12px; border-radius:8px; font-size:14px; margin-bottom:12px;
+  }
+  button{
+    background:var(--amber); color:#1a1305; border:none; padding:11px; border-radius:8px;
+    font-weight:700; font-size:14px; cursor:pointer; width:100%;
+  }
+  button.secondary{background:var(--surface-2); color:var(--text); border:1px solid var(--line);}
+  .error{color:var(--red); font-size:13px; margin-top:8px;}
+
+  /* Layout */
+  #app{display:none; min-height:100vh;}
+  .sidebar{
+    width:220px; background:var(--surface); border-right:1px solid var(--line);
+    padding:24px 16px; position:fixed; top:0; bottom:0;
+  }
+  .sidebar h1{font-size:20px; margin-bottom:28px;}
+  .nav-item{
+    padding:11px 14px; border-radius:8px; cursor:pointer; font-size:14px; margin-bottom:4px; color:var(--text-dim);
+  }
+  .nav-item.active, .nav-item:hover{background:var(--surface-2); color:var(--text);}
+  .main{margin-left:220px; padding:32px;}
+  .topbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;}
+
+  table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:10px; overflow:hidden;}
+  th, td{padding:12px 14px; text-align:left; border-bottom:1px solid var(--line); font-size:14px;}
+  th{color:var(--text-dim); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.04em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600;}
+  .badge.new{background:#3a3320; color:var(--amber);}
+  .badge.confirmed{background:#20323a; color:#7fc4e0;}
+  .badge.packing{background:#3a2f20; color:#e0b57f;}
+  .badge.delivering{background:#20343a; color:#7fb4e0;}
+  .badge.delivered{background:#1f3a24; color:var(--green);}
+  .badge.cancelled{background:#3a2020; color:var(--red);}
+  .badge.active{background:#1f3a24; color:var(--green);}
+
+  select{background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:13px;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:50;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:26px; width:380px; max-width:calc(100vw - 32px);}
+  .add-product-btn{width:auto; padding:10px 18px;}
+  .form-row{display:flex; gap:10px;}
+  .form-row input{flex:1;}
+  .form-row > div{flex:1; min-width:0;}
+  label{font-size:12px; color:var(--text-dim); display:block; margin-bottom:5px;}
+
+  button:disabled{opacity:0.55; cursor:not-allowed;}
+  .row-btn, .variant-del{min-height:34px; white-space:nowrap;}
+
+  /* Toast — avval xabar berish uchun faqat alert() ishlatilardi, aksariyat
+     xatolar esa umuman ko'rinmasdi */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120px);
+    background:var(--green); color:#0f2410; padding:13px 20px; border-radius:10px;
+    font-weight:600; font-size:14px; z-index:80; opacity:0; pointer-events:none;
+    transition:all .25s ease; max-width:calc(100vw - 32px); box-shadow:0 6px 20px rgba(0,0,0,0.35);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.err{background:var(--red); color:#2a0f0f;}
+
+  /* Mobil moslashuv — avval fayl ichida bitta ham @media qoidasi yo'q edi,
+     220px qat'iy sidebar telefonda kontentga ~65px joy qoldirardi */
+  .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  @media(max-width:800px){
+    .sidebar{
+      position:static; width:auto; bottom:auto; border-right:none;
+      border-bottom:1px solid var(--line); padding:14px 12px;
+      display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    }
+    .sidebar h1{font-size:16px; margin:0 8px 0 0;}
+    .nav-item{margin-bottom:0; padding:9px 11px; font-size:13px;}
+    .main{margin-left:0; padding:16px 12px;}
+    .topbar{flex-wrap:wrap; gap:12px;}
+    table{min-width:640px;}
+    th, td{padding:10px; font-size:13px;}
+    .form-row{flex-direction:column; gap:0;}
+    .modal{padding:20px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="box">
+    <h2 style="margin-bottom:18px;">🐾 ZooPet Admin</h2>
+    <input id="loginUser" placeholder="Login" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Parol" autocomplete="current-password">
+    <button id="loginBtn" onclick="doLogin()">Kirish</button>
+    <div class="error" id="loginError"></div>
+  </div>
+  <div style="color:var(--text-dim); font-size:12px; max-width:320px; text-align:center; line-height:1.6;">
+    Admin hisobi terminal orqali yaratiladi:<br><code>python -m backend.create_admin</code>
+  </div>
+</div>
+
+<div id="app">
+  <div class="sidebar">
+    <h1>🐾 ZooPet</h1>
+    <div class="nav-item active" data-tab="orders" onclick="switchTab('orders')">📦 Buyurtmalar</div>
+    <div class="nav-item" data-tab="products" onclick="switchTab('products')">🛍 Mahsulotlar</div>
+    <div class="nav-item" data-tab="categories" onclick="switchTab('categories')">🗂 Kategoriyalar</div>
+    <div class="nav-item" data-tab="subscriptions" onclick="switchTab('subscriptions')">🔁 Obunalar</div>
+    <div class="nav-item" onclick="logout()" style="margin-top:24px; color:var(--red);">Chiqish</div>
+  </div>
+
+  <div class="main">
+    <div id="ordersTab">
+      <div class="topbar"><h2>Buyurtmalar</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Mijoz</th><th>Summa</th><th>To'lov</th><th>Manzil</th><th>Holat</th></tr></thead>
+        <tbody id="ordersBody"></tbody>
+      </table></div>
+    </div>
+
+    <div id="productsTab" style="display:none;">
+      <div class="topbar"><h2>Mahsulotlar</h2><button class="add-product-btn" onclick="openProductModal()">+ Mahsulot qo'shish</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nomi</th><th>Kategoriya</th><th>Narx</th><th>Zaxira</th><th></th><th></th><th></th><th></th></tr></thead>
+        <tbody id="productsBody"></tbody>
+      </table></div>
+    </div>
+
+    <div id="categoriesTab" style="display:none;">
+      <div class="topbar"><h2>Kategoriyalar</h2><button class="add-product-btn" onclick="openCategoryModal()">+ Kategoriya qo'shish</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ikonka</th><th>Nomi</th><th>Tartib</th></tr></thead>
+        <tbody id="categoriesBody"></tbody>
+      </table></div>
+    </div>
+
+    <div id="subscriptionsTab" style="display:none;">
+      <div class="topbar"><h2>Obunalar</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Mijoz</th><th>Telefon</th><th>Tarif</th><th>Tur</th><th>Narx</th><th>Holat</th><th>Sana</th></tr></thead>
+        <tbody id="subscriptionsBody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="productModal">
+  <div class="modal" style="width:450px; max-width:calc(100vw - 32px); max-height:90vh; overflow-y:auto;">
+    <h2 style="margin-bottom:16px; font-size:17px;" id="pm_title">Yangi mahsulot</h2>
+    <label>Kategoriya</label>
+    <select id="p_category" style="width:100%; margin-bottom:12px;"></select>
+    <label>Nomi *</label>
+    <input id="p_name" placeholder="Masalan: Royal Canin Adult" required>
+    <label>Tavsif</label>
+    <textarea id="p_desc" rows="2" placeholder="Qisqacha tavsif" style="width:100%; background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font-family:inherit; font-size:13px;"></textarea>
+    <!-- Bu maydonlar avval panelda umuman yo'q edi, shuning uchun panel orqali
+         yaratilgan mahsulot do'kondagi tur/brend/yosh filtrlarida ko'rinmasdi. -->
+    <div class="form-row" style="margin-top:12px;">
+      <div><label>Hayvon turi</label>
+        <select id="p_species" style="width:100%;">
+          <option value="">— tanlanmagan —</option>
+          <option value="cat">🐱 Mushuk</option>
+          <option value="dog">🐶 It</option>
+        </select>
+      </div>
+      <div><label>Brend</label><input id="p_brand" placeholder="Royal Canin"></div>
+    </div>
+    <div class="form-row" style="margin-top:6px;">
+      <div><label>Ozuqa turi</label>
+        <select id="p_food_type" style="width:100%;">
+          <option value="">— tanlanmagan —</option>
+          <option value="dry">Quruq</option>
+          <option value="wet">Nam</option>
+        </select>
+      </div>
+      <div><label>Yosh guruhi</label>
+        <select id="p_age_group" style="width:100%;">
+          <option value="">— tanlanmagan —</option>
+          <option value="young">Kichkintoylar</option>
+          <option value="adult">Kattalar</option>
+          <option value="senior">Keksalar</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:6px;">
+      <div><label>Sterilizatsiya</label>
+        <select id="p_sterilization" style="width:100%;">
+          <option value="">— tanlanmagan —</option>
+          <option value="not_sterilized">Sterillanmagan</option>
+          <option value="sterilized">Sterillangan</option>
+        </select>
+      </div>
+      <div><label>Tarkibi</label><input id="p_composition" placeholder="meat, fish"></div>
+    </div>
+    <label style="margin-top:12px;">Rasm</label>
+    <div style="display:flex; gap:10px; margin-bottom:12px;">
+      <input id="p_image" type="file" accept="image/*" style="flex:1;">
+      <div style="width:60px; height:60px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <img id="p_image_preview" style="width:100%; height:100%; object-fit:cover; border-radius:7px; display:none;">
+        <span id="p_image_placeholder" style="font-size:24px;">📦</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Narx (so'm) *</label><input id="p_price" type="number" min="0" step="500" placeholder="185000"></div>
+      <div><label>Eski narx</label><input id="p_old_price" type="number" min="0" step="500" placeholder="ixtiyoriy"></div>
+    </div>
+    <div class="form-row" style="margin-top:6px;">
+      <div><label>Zaxira</label><input id="p_stock" type="number" min="0" placeholder="50" value="50"></div>
+      <div><label>O'lchov</label><input id="p_unit" placeholder="dona" value="dona"></div>
+    </div>
+    <div class="form-row" style="margin-top:12px;">
+      <button id="pm_save" onclick="saveProduct()">Saqlash</button>
+      <button class="secondary" onclick="closeModal('productModal')">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px; font-size:17px;">Yangi kategoriya</h2>
+    <label>Ikonka (emoji)</label>
+    <input id="c_icon" placeholder="🐶" value="🐾">
+    <label>Nomi</label>
+    <input id="c_name" placeholder="Masalan: It ozig'i">
+    <div class="form-row" style="margin-top:6px;">
+      <button onclick="saveCategory()">Saqlash</button>
+      <button class="secondary" onclick="closeModal('categoryModal')">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="variantsModal">
+  <div class="modal" style="width:500px;">
+    <h2 style="margin-bottom:16px; font-size:17px;" id="vm_title">Variantlar</h2>
+    <table style="margin-bottom:16px;">
+      <thead><tr><th>Og'irlik</th><th>Narx</th><th>Zaxira</th><th></th></tr></thead>
+      <tbody id="variantsBody"></tbody>
+    </table>
+    <div class="form-row">
+      <div style="flex:1;"><label>Og'irlik</label><input id="v_label" placeholder="100g" style="width:100%;"></div>
+      <div style="flex:1;"><label>Narx (so'm)</label><input id="v_price" type="number" style="width:100%;"></div>
+      <div style="flex:1;"><label>Zaxira</label><input id="v_stock" type="number" placeholder="ixtiyoriy" style="width:100%;"></div>
+    </div>
+    <div class="form-row" style="margin-top:6px;">
+      <button onclick="addVariant()">+ Qo'shish</button>
+      <button class="secondary" onclick="closeModal('variantsModal')">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editImageModal">
+  <div class="modal">
+    <h2 style="margin-bottom:16px; font-size:17px;" id="ei_title">Rasmni o'zgartirish</h2>
+    <div style="display:flex; justify-content:center; margin-bottom:20px;">
+      <div style="width:140px; height:140px; background:var(--surface-2); border:1px solid var(--line); border-radius:14px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+        <img id="ei_current_image" style="width:100%; height:100%; object-fit:cover; display:none;">
+        <span id="ei_placeholder" style="font-size:48px;">📦</span>
+      </div>
+    </div>
+    <label>Yangi rasm tanlang</label>
+    <input id="ei_file" type="file" accept="image/*" style="width:100%; margin-bottom:12px;">
+    <div style="display:flex; gap:10px; margin-bottom:12px; padding:12px; background:var(--surface-2); border-radius:8px; border:1px dashed var(--line); text-align:center; color:var(--text-dim); font-size:12px;">
+      <div style="flex:1;">PNG, JPG, WEBP<br>Max 5MB</div>
+    </div>
+    <div class="form-row" style="margin-top:6px;">
+      <button onclick="saveProductImage(this)">Saqlash</button>
+      <button class="secondary" onclick="closeModal('editImageModal')">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Admin panel API bilan bir xil origindan xizmat qiladi. Avval
+// `window.location.origin.includes('8000') ? '' : 'http://127.0.0.1:8000'`
+// turgan edi — productionda (443-port) barcha so'rovlar adminning o'z
+// kompyuteriga yuborilardi.
+const API_BASE = '';
+let TOKEN = localStorage.getItem('zoopet_admin_token') || null;
+let categories = [];
+
+/** HTML ga qo'yiladigan har qanday server ma'lumoti shu orqali o'tadi. */
+function esc(value){
+  return String(value ?? '').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+
+function toast(msg, kind='ok'){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + kind;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+class AuthError extends Error {}
+
+/** Har bir so'rovga Authorization qo'shadi va 401 ni markazda ushlaydi.
+ *  Avval bu funksiya tokenni umuman yubormasdi — 15 chaqiruvdan 13 tasi
+ *  autentifikatsiyasiz ketardi. */
+async function api(path, opts={}){
+  const headers = {'Content-Type':'application/json', ...(opts.headers || {})};
+  if(TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(API_BASE + path, {...opts, headers});
+  if(res.status === 401){
+    forceLogin('Sessiya muddati tugagan. Qaytadan kiring.');
+    throw new AuthError('unauthorized');
+  }
+  if(!res.ok) throw new Error(await friendlyError(res));
+  return res.status === 204 ? null : res.json();
+}
+
+/** FastAPI/Pydantic xatolarini o'qiladigan matnga aylantiradi. */
+async function friendlyError(res){
+  try{
+    const data = await res.json();
+    if(typeof data.detail === 'string') return data.detail;
+    if(Array.isArray(data.detail)){
+      return data.detail.map(d => `${(d.loc || []).slice(-1)[0] || ''}: ${d.msg}`).join('; ');
+    }
+  }catch(e){ /* JSON emas */ }
+  return `Server xatosi (${res.status})`;
+}
+
+/** Har bir yuklovchi/mutatsiya shu orqali o'raladi, shunda xato jimgina
+ *  yo'qolmaydi (avval 10 ta funksiyada try/catch yo'q edi). */
+async function guard(fn, errPrefix){
+  try{ return await fn(); }
+  catch(e){
+    if(!(e instanceof AuthError)) toast(`${errPrefix}: ${e.message}`, 'err');
+    return undefined;
+  }
+}
+
+/** Tugmani so'rov davomida bloklaydi — ikki marta bosish oldini oladi. */
+async function withBusy(btn, fn){
+  if(!btn || btn.disabled) return fn();
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '...';
+  try{ return await fn(); }
+  finally{ btn.disabled = false; btn.textContent = label; }
+}
+
+function forceLogin(message){
+  TOKEN = null;
+  localStorage.removeItem('zoopet_admin_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginError').textContent = message || '';
+}
+
+async function doLogin(){
+  const btn = document.getElementById('loginBtn');
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if(!username || !password){
+    errEl.textContent = 'Login va parolni kiriting';
+    return;
+  }
+  await withBusy(btn, async () => {
+    try{
+      const res = await fetch(API_BASE + '/api/admin/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username, password}),
+      });
+      if(!res.ok){
+        errEl.textContent = res.status === 401
+          ? 'Login yoki parol xato'
+          : `Kirish imkonsiz (${res.status})`;
+        return;
+      }
+      const data = await res.json();
+      TOKEN = data.token;
+      localStorage.setItem('zoopet_admin_token', TOKEN);
+      document.getElementById('loginPass').value = '';
+      showApp();
+    }catch(e){
+      errEl.textContent = 'Serverga ulanish imkonsiz';
+    }
+  });
+}
+
+async function logout(){
+  // Tokenni serverda ham bekor qilamiz — avval faqat localStorage tozalanardi,
+  // shuning uchun o'g'irlangan token ishlashda davom etardi.
+  try{ await api('/api/admin/logout', {method:'POST'}); }catch(e){ /* ahamiyatsiz */ }
+  forceLogin();
+}
+
+async function showApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  // Kategoriyalarni birinchi kutamiz: loadProducts ular nomini ishlatadi
+  // (avval to'rttasi ham parallel chaqirilib, Kategoriya ustuni "-" bo'lib qolardi).
+  await guard(loadCategories, 'Kategoriyalarni yuklash');
+  await Promise.all([
+    guard(loadOrders, 'Buyurtmalarni yuklash'),
+    guard(loadProducts, 'Mahsulotlarni yuklash'),
+    guard(loadSubscriptions, 'Obunalarni yuklash'),
+  ]);
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
+  document.getElementById('productsTab').style.display = tab === 'products' ? 'block' : 'none';
+  document.getElementById('categoriesTab').style.display = tab === 'categories' ? 'block' : 'none';
+  document.getElementById('subscriptionsTab').style.display = tab === 'subscriptions' ? 'block' : 'none';
+}
+
+const STATUS_OPTIONS = ['new','confirmed','packing','delivering','delivered','cancelled'];
+const STATUS_LABELS = {new:'Yangi', confirmed:'Tasdiqlangan', packing:"Yig'ilmoqda", delivering:'Yetkazilmoqda', delivered:'Yetkazildi', cancelled:'Bekor qilingan'};
+// Avval `cash`/`click`/`payme` xom holda ko'rsatilardi
+const PAYMENT_LABELS = {cash:'Naqd', click:'Click', payme:'Payme'};
+
+async function loadOrders(){
+  const orders = await api('/api/orders');
+  document.getElementById('ordersBody').innerHTML = orders.map(o => `
+    <tr>
+      <td class="mono">#${Number(o.id)}</td>
+      <td>${esc(o.delivery_phone)}</td>
+      <td class="mono">${Number(o.total_amount).toLocaleString()}</td>
+      <td>${esc(PAYMENT_LABELS[o.payment_method] || o.payment_method)}</td>
+      <td>${esc(o.delivery_address)}</td>
+      <td>
+        <select data-order-id="${o.id}" data-current="${esc(o.status)}" onchange="updateStatus(this)">
+          ${STATUS_OPTIONS.map(s => `<option value="${s}" ${s===o.status?'selected':''}>${esc(STATUS_LABELS[s])}</option>`).join('')}
+        </select>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">Buyurtmalar yo\'q</td></tr>';
+}
+
+async function updateStatus(selectEl){
+  const orderId = selectEl.dataset.orderId;
+  const previous = selectEl.dataset.current;
+  const status = selectEl.value;
+  if(status === previous) return;
+  // Holat o'zgarishi mijozga ta'sir qiladi (bekor qilish qaytarilmaydi),
+  // shuning uchun tasdiq so'raymiz — avval `onchange` jimgina yuborardi.
+  if(!confirm(`Buyurtma #${orderId} holatini "${STATUS_LABELS[status]}" ga o'zgartirasizmi?`)){
+    selectEl.value = previous;
+    return;
+  }
+  selectEl.disabled = true;
+  const ok = await guard(async () => {
+    await api(`/api/orders/${orderId}/status`, {method:'PATCH', body: JSON.stringify({status})});
+    return true;
+  }, 'Holatni o\'zgartirish');
+  selectEl.disabled = false;
+  if(ok){ toast(`#${orderId}: ${STATUS_LABELS[status]}`); }
+  else { selectEl.value = previous; }
+  await guard(loadOrders, 'Buyurtmalarni yuklash');
+}
+
+async function loadCategories(){
+  categories = await api('/api/categories');
+  document.getElementById('categoriesBody').innerHTML = categories.map(c => `
+    <tr><td>${esc(c.icon)}</td><td>${esc(c.name)}</td><td class="mono">${Number(c.sort_order)}</td></tr>
+  `).join('') || '<tr><td colspan="3" style="text-align:center; color:var(--text-dim);">Kategoriyalar yo\'q</td></tr>';
+  document.getElementById('p_category').innerHTML = categories
+    .map(c => `<option value="${Number(c.id)}">${esc(c.icon + ' ' + c.name)}</option>`).join('');
+}
+
+async function loadProducts(){
+  const products = await api('/api/products');
+  document.getElementById('productsBody').innerHTML = products.map(p => {
+    const cat = categories.find(c => c.id === p.category_id);
+    const variantCount = p.variants ? p.variants.length : 0;
+    const variantLabel = variantCount > 0 ? `Variantlar (${variantCount})` : 'Variantlar';
+    // Ma'lumot `data-*` atributlarida uzatiladi. Avval mahsulot nomi
+    // `onclick="openEditImageModal(${p.id},'${p.name}',...)"` ichiga qo'yilgan
+    // edi — bu ham XSS yo'li, ham o'zbekcha apostrofli nomlarda ("Bo'yinbog'")
+    // tugmani ishlamay qo'yardi.
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td>${cat ? esc(cat.icon + ' ' + cat.name) : '-'}</td>
+      <td class="mono">${Number(p.price).toLocaleString()}</td>
+      <td class="mono">${Number(p.stock)}</td>
+      <td><button class="secondary row-btn" data-act="edit" data-id="${Number(p.id)}">✏️ Tahrirlash</button></td>
+      <td><button class="secondary row-btn" data-act="image" data-id="${Number(p.id)}">🖼️ Rasm</button></td>
+      <td><button class="secondary row-btn" data-act="variants" data-id="${Number(p.id)}">${esc(variantLabel)}</button></td>
+      <td><button class="secondary row-btn" data-act="delete" data-id="${Number(p.id)}" data-name="${esc(p.name)}">O'chirish</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--text-dim);">Mahsulotlar yo\'q</td></tr>';
+}
+
+// Delegatsiya qilingan ishlovchi — inline `onclick` ichiga server ma'lumotini
+// qo'yish ehtiyojini butunlay yo'q qiladi.
+document.getElementById('productsBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.row-btn');
+  if(!btn) return;
+  const id = Number(btn.dataset.id);
+  switch(btn.dataset.act){
+    case 'edit':     openProductModal(id); break;
+    case 'image':    openEditImageModal(id); break;
+    case 'variants': openVariantsModal(id); break;
+    case 'delete':   deleteProduct(id, btn.dataset.name, btn); break;
+  }
+});
+
+async function deleteProduct(id, name, btn){
+  // Avval tasdiq yo'q edi: bitta tasodifiy bosish mahsulotni do'kondan
+  // olib tashlardi va panelda uni qaytarish imkoni yo'q.
+  if(!confirm(`"${name}" o'chirilsinmi?\n\nMahsulot do'kondan yo'qoladi (panel orqali qaytarib bo'lmaydi).`)) return;
+  await withBusy(btn, () => guard(async () => {
+    await api(`/api/products/${id}`, {method:'DELETE'});
+    toast('Mahsulot o\'chirildi');
+    await loadProducts();
+  }, 'O\'chirish'));
+}
+
+const SPECIES_LABELS = {cat: '🐱 Mushuk', dog: '🐶 It'};
+
+const SUB_STATUS_LABELS = {active:'Faol', cancelled:'Bekor qilingan'};
+
+async function loadSubscriptions(){
+  const subs = await api('/api/admin/subscriptions');
+  document.getElementById('subscriptionsBody').innerHTML = subs.map(s => {
+    // `s.status` avval to'g'ridan-to'g'ri class atributiga qo'yilardi
+    const statusClass = s.status === 'active' ? 'active' : 'cancelled';
+    return `
+    <tr>
+      <td class="mono">#${Number(s.id)}</td>
+      <td>${esc(s.customer.full_name)}</td>
+      <td>${esc(s.customer.phone)}</td>
+      <td>${esc(s.plan.name)}</td>
+      <td>${esc(SPECIES_LABELS[s.plan.species] || s.plan.species)}</td>
+      <td class="mono">${Number(s.plan.price).toLocaleString()}</td>
+      <td><span class="badge ${statusClass}">${esc(SUB_STATUS_LABELS[s.status] || s.status)}</span></td>
+      <td class="mono">${new Date(s.created_at).toLocaleDateString()}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--text-dim);">Obunalar yo\'q</td></tr>';
+}
+
+let editingProductId = null;
+
+const PRODUCT_FIELDS = ['p_name','p_desc','p_brand','p_composition','p_price','p_old_price','p_stock','p_unit'];
+const PRODUCT_SELECTS = ['p_species','p_food_type','p_age_group','p_sterilization'];
+
+function resetProductForm(){
+  // Avval forma hech qachon tozalanmasdi — modalni qayta ochganda oldingi
+  // mahsulotning nomi/narxi turardi.
+  PRODUCT_FIELDS.forEach(id => { document.getElementById(id).value = ''; });
+  PRODUCT_SELECTS.forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('p_stock').value = '50';
+  document.getElementById('p_unit').value = 'dona';
+  document.getElementById('p_image').value = '';
+  document.getElementById('p_image_preview').style.display = 'none';
+  document.getElementById('p_image_placeholder').style.display = 'block';
+}
+
+async function openProductModal(productId){
+  resetProductForm();
+  editingProductId = productId || null;
+  document.getElementById('pm_title').textContent = editingProductId ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot';
+  document.getElementById('productModal').classList.add('open');
+
+  if(editingProductId){
+    await guard(async () => {
+      const p = await api(`/api/products/${editingProductId}`);
+      document.getElementById('p_category').value = p.category_id ?? '';
+      document.getElementById('p_name').value = p.name ?? '';
+      document.getElementById('p_desc').value = p.description ?? '';
+      document.getElementById('p_price').value = p.price ?? '';
+      document.getElementById('p_old_price').value = p.old_price ?? '';
+      document.getElementById('p_stock').value = p.stock ?? 0;
+      document.getElementById('p_unit').value = p.unit ?? 'dona';
+      document.getElementById('p_brand').value = p.brand ?? '';
+      document.getElementById('p_composition').value = p.composition ?? '';
+      PRODUCT_SELECTS.forEach(id => {
+        const key = id.slice(2);
+        document.getElementById(id).value = p[key] ?? '';
+      });
+    }, 'Mahsulotni yuklash');
+  }
+}
+function openCategoryModal(){
+  document.getElementById('c_icon').value = '🐾';
+  document.getElementById('c_name').value = '';
+  document.getElementById('categoryModal').classList.add('open');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+async function saveProduct(){
+  const name = document.getElementById('p_name').value.trim();
+  const priceRaw = document.getElementById('p_price').value;
+  const oldPriceRaw = document.getElementById('p_old_price').value;
+  const stockRaw = document.getElementById('p_stock').value;
+
+  // Avval tekshiruv yo'q edi: bo'sh nom qabul qilinardi (do'konda nomsiz
+  // mahsulot), bo'sh narx esa NaN -> null -> tushunarsiz 422 berardi.
+  if(!name){ toast('Mahsulot nomini kiriting', 'err'); return; }
+  const price = parseFloat(priceRaw);
+  if(!Number.isFinite(price) || price < 0){ toast('Narxni to\'g\'ri kiriting', 'err'); return; }
+  const oldPrice = oldPriceRaw === '' ? null : parseFloat(oldPriceRaw);
+  if(oldPrice !== null && (!Number.isFinite(oldPrice) || oldPrice < 0)){
+    toast('Eski narx noto\'g\'ri', 'err'); return;
+  }
+  // `|| 50` emas: atayin kiritilgan 0 ni 50 ga aylantirmaymiz
+  const stock = stockRaw === '' ? 0 : parseInt(stockRaw, 10);
+  if(!Number.isInteger(stock) || stock < 0){ toast('Zaxira noto\'g\'ri', 'err'); return; }
+
+  const orEmpty = (id) => document.getElementById(id).value || null;
+  const payload = {
+    category_id: parseInt(document.getElementById('p_category').value, 10),
+    name,
+    description: document.getElementById('p_desc').value.trim(),
+    price,
+    old_price: oldPrice,
+    stock,
+    unit: document.getElementById('p_unit').value.trim() || 'dona',
+    species: orEmpty('p_species'),
+    brand: document.getElementById('p_brand').value.trim() || null,
+    food_type: orEmpty('p_food_type'),
+    composition: document.getElementById('p_composition').value.trim() || null,
+    age_group: orEmpty('p_age_group'),
+    sterilization: orEmpty('p_sterilization'),
+  };
+  if(!Number.isInteger(payload.category_id)){ toast('Kategoriyani tanlang', 'err'); return; }
+
+  await withBusy(document.getElementById('pm_save'), () => guard(async () => {
+    const product = editingProductId
+      ? await api(`/api/products/${editingProductId}`, {method:'PUT', body: JSON.stringify(payload)})
+      : await api('/api/products', {method:'POST', body: JSON.stringify(payload)});
+
+    const fileInput = document.getElementById('p_image');
+    if(fileInput.files.length > 0){
+      await uploadImage(product.id, fileInput.files[0]);
+    }
+    closeModal('productModal');
+    toast(editingProductId ? 'Mahsulot yangilandi' : 'Mahsulot qo\'shildi');
+    editingProductId = null;
+    await loadProducts();
+  }, 'Mahsulotni saqlash'));
+}
+
+/** Rasm yuklash — FormData bo'lgani uchun Content-Type ni o'zi qo'ymaydi. */
+async function uploadImage(productId, file){
+  const res = await fetch(API_BASE + `/api/products/${productId}/image`, {
+    method: 'POST',
+    body: (() => { const fd = new FormData(); fd.append('file', file); return fd; })(),
+    headers: {'Authorization': `Bearer ${TOKEN}`},
+  });
+  if(res.status === 401){ forceLogin('Sessiya muddati tugagan. Qaytadan kiring.'); throw new AuthError('unauthorized'); }
+  if(!res.ok) throw new Error(await friendlyError(res));
+  return res.json();
+}
+
+async function saveCategory(){
+  const name = document.getElementById('c_name').value.trim();
+  if(!name){ toast('Kategoriya nomini kiriting', 'err'); return; }
+  const payload = {
+    icon: document.getElementById('c_icon').value.trim() || '🐾',
+    name,
+    sort_order: categories.length + 1,
+  };
+  // Avval xato bo'lsa modal ochiq qolib, hech qanday xabar chiqmasdi
+  await guard(async () => {
+    await api('/api/categories', {method:'POST', body: JSON.stringify(payload)});
+    closeModal('categoryModal');
+    toast('Kategoriya qo\'shildi');
+    await loadCategories();
+    await loadProducts();   // kategoriya nomlari mahsulot jadvalida ham ko'rinadi
+  }, 'Kategoriyani saqlash');
+}
+
+// ---------- Image upload ----------
+
+document.getElementById('p_image')?.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    document.getElementById('p_image_preview').src = event.target.result;
+    document.getElementById('p_image_preview').style.display = 'block';
+    document.getElementById('p_image_placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('ei_file')?.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    document.getElementById('ei_current_image').src = event.target.result;
+    document.getElementById('ei_current_image').style.display = 'block';
+    document.getElementById('ei_placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+let editImageProductId = null;
+
+async function openEditImageModal(productId) {
+  editImageProductId = productId;
+  document.getElementById('ei_file').value = '';
+  document.getElementById('ei_current_image').style.display = 'none';
+  document.getElementById('ei_placeholder').style.display = 'block';
+  document.getElementById('editImageModal').classList.add('open');
+
+  await guard(async () => {
+    const product = await api(`/api/products/${productId}`);
+    // Avval bu yerda `document.getElementById('h2')` turgan edi — bunday
+    // element hujjatda mavjud emas, shuning uchun funksiya TypeError bilan
+    // to'xtab, modal umuman ochilmasdi.
+    document.getElementById('ei_title').textContent = `Rasm: ${product.name}`;
+    if(product.image_url && product.image_url.startsWith('uploads/')){
+      document.getElementById('ei_current_image').src = '/' + product.image_url;
+      document.getElementById('ei_current_image').style.display = 'block';
+      document.getElementById('ei_placeholder').style.display = 'none';
+    }
+  }, 'Mahsulotni yuklash');
+}
+
+async function saveProductImage(btn) {
+  if(!editImageProductId) return;
+  const fileInput = document.getElementById('ei_file');
+  if(!fileInput.files.length) {
+    toast('Iltimos, rasm tanlang', 'err');
+    return;
+  }
+  await withBusy(btn, () => guard(async () => {
+    await uploadImage(editImageProductId, fileInput.files[0]);
+    closeModal('editImageModal');
+    toast('Rasm yangilandi');
+    await loadProducts();
+  }, 'Rasm yuklash'));
+}
+
+// ---------- Variants management ----------
+
+let variantsProductId = null;
+
+async function openVariantsModal(productId){
+  variantsProductId = productId;
+  document.getElementById('variantsModal').classList.add('open');
+  await guard(async () => {
+    const product = await api(`/api/products/${productId}`);
+    document.getElementById('vm_title').textContent = `Variantlar — ${product.name}`;
+    renderVariantsTable(product.variants || []);
+  }, 'Variantlarni yuklash');
+}
+
+function renderVariantsTable(variants){
+  document.getElementById('variantsBody').innerHTML = variants.map(v => `
+    <tr>
+      <td>${esc(v.label)}</td>
+      <td class="mono">${Number(v.price).toLocaleString()}</td>
+      <td class="mono">${v.stock ?? '-'}</td>
+      <td><button class="secondary variant-del" data-id="${Number(v.id)}" data-label="${esc(v.label)}" style="width:auto; padding:6px 12px;">O'chirish</button></td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Variant yo\'q</td></tr>';
+}
+
+document.getElementById('variantsBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.variant-del');
+  if(btn) deleteVariant(Number(btn.dataset.id), btn.dataset.label, btn);
+});
+
+async function refreshVariants(){
+  const product = await api(`/api/products/${variantsProductId}`);
+  renderVariantsTable(product.variants || []);
+  await loadProducts();
+}
+
+async function addVariant(btn){
+  const label = document.getElementById('v_label').value.trim();
+  const priceRaw = document.getElementById('v_price').value;
+  const stockRaw = document.getElementById('v_stock').value;
+  // Avval `if(!label || !price) return;` — jimgina chiqib ketardi va 0 narxni
+  // ham rad etardi, foydalanuvchi nima bo'lganini bilmasdi.
+  if(!label){ toast('Og\'irlik/hajmni kiriting', 'err'); return; }
+  const price = parseFloat(priceRaw);
+  if(!Number.isFinite(price) || price < 0){ toast('Narxni to\'g\'ri kiriting', 'err'); return; }
+
+  await withBusy(btn, () => guard(async () => {
+    await api(`/api/products/${variantsProductId}/variants`, {
+      method:'POST',
+      body: JSON.stringify({label, price, stock: stockRaw === '' ? null : parseInt(stockRaw, 10)})
+    });
+    ['v_label','v_price','v_stock'].forEach(id => { document.getElementById(id).value = ''; });
+    toast('Variant qo\'shildi');
+    await refreshVariants();
+  }, 'Variant qo\'shish'));
+}
+
+async function deleteVariant(variantId, label, btn){
+  // Bu qaytarilmaydigan (hard delete) amal — avval tasdiq so'ralmasdi
+  if(!confirm(`"${label}" varianti butunlay o'chirilsinmi?`)) return;
+  await withBusy(btn, () => guard(async () => {
+    await api(`/api/products/${variantsProductId}/variants/${variantId}`, {method:'DELETE'});
+    toast('Variant o\'chirildi');
+    await refreshVariants();
+  }, 'Variantni o\'chirish'));
+}
+
+// ---------- Ishga tushirish ----------
+
+// Saqlangan token haqiqiyligini tekshiramiz. Avval `if(TOKEN) showApp();`
+// turgan edi — server qayta ishga tushgandan keyin (tokenlar xotirada
+// saqlanadi) admin to'rtta bo'sh jadval oldida qolib, hech qanday xabar
+// ko'rmasdi va login ekraniga qaytarilmasdi.
+(async function init(){
+  if(!TOKEN){
+    document.getElementById('loginScreen').style.display = 'flex';
+    return;
+  }
+  try{
+    const res = await fetch(API_BASE + '/api/admin/me', {headers:{'Authorization':'Bearer ' + TOKEN}});
+    if(res.ok) await showApp();
+    else forceLogin('Sessiya muddati tugagan. Qaytadan kiring.');
+  }catch(e){
+    forceLogin('Serverga ulanish imkonsiz');
+  }
+})();
+</script>
+
+</body>
+</html>
