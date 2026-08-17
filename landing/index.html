@@ -62,7 +62,6 @@
   .navdots{ position: fixed; right: 26px; top:50%; transform: translateY(-50%); display:flex; flex-direction:column; gap:12px; z-index:50; }
   .navdots button{ width:10px; height:10px; border-radius:50%; border:2px solid var(--orange); background: transparent; cursor:pointer; padding:0; transition: all .25s; }
   .navdots button.active{ background: var(--orange); width:12px; height:12px; }
-  @media (max-width: 760px){ .navdots{ display:none; } }
 
   .brandmark{
     position: fixed; top: 28px; left: 32px; z-index: 50;
@@ -71,6 +70,63 @@
     letter-spacing: 0.3px;
     background:rgba(255,255,255,0.88); backdrop-filter:blur(6px); border-radius:999px; padding:6px 14px 6px 8px;
   }
+
+  @media (max-width: 1100px){
+    .slide{ padding-left: 5vw; padding-right: 5vw; }
+    .card-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .strategy4{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .steps4{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 820px){
+    .slide{ min-height: auto; padding: 80px 18px 70px; }
+    .scroller{ scroll-snap-type: y proximity; }
+    .slide-inner{ max-width: 100%; }
+    .scrollcue{ display:none; }
+    .brandmark{ top: 16px; left: 16px; padding: 6px 12px 6px 8px; }
+    .brandmark .wordmark{ font-size: 13px !important; }
+    .navdots{ right: 14px; }
+    .capacity-row, .transform-row, .benefits3, .value-strip, .transport-wrap, .why-grid, .tier-wrap, .cta-row, .contact-row{ gap: 16px; }
+    .capacity-row{ margin-top: 28px; }
+    .chips{ gap: 10px; margin-top: 28px; }
+    .chip{ font-size: 13px; padding: 10px 14px; }
+    .pcard, .tbox, .tier-right, .cost-card, .step-card, .strat-card{ padding: 20px 18px; }
+    .prob3{ grid-template-columns: 1fr; }
+    .why-grid, .transport-wrap, .tier-wrap{ grid-template-columns: 1fr; }
+    .table-wrap{ overflow-x: auto; margin-top: 26px; }
+    table{ min-width: 620px; }
+    .contact-row{ justify-content: flex-start; }
+    .contact-row span, .contact-row a{ white-space: normal; }
+  }
+
+  @media (max-width: 560px){
+    html, body{ overflow-x: hidden; }
+    .slide{ padding: 76px 14px 60px; }
+    .brandmark{ top: 12px; left: 12px; border-radius: 14px; }
+    .brandmark svg{ width: 18px; height: 18px; }
+    .navdots{ display:none; }
+    h2.headline{ line-height: 1.08; }
+    #s1 h1{ font-size: clamp(34px, 15vw, 60px); }
+    #s1 .tag{ font-size: clamp(16px, 6vw, 22px); }
+    #s1 .sub2{ font-size: 14px; }
+    .capacity-num{ font-size: clamp(42px, 18vw, 80px); }
+    .capacity-label, .footnote, .sub, .who, .care-item, .step-card p, .strat-card p, .prob-card p, .pcard p{ font-size: 13px; }
+    .card-grid, .strategy4, .steps4{ grid-template-columns: 1fr; }
+    .transform-row{ flex-direction: column; }
+    .arrow-mid{ display:none; }
+    .tbox, .strat-card{ width: 100%; }
+    .benefits3{ display: grid; grid-template-columns: 1fr; }
+    .benefits3 .b{ width: 100%; }
+    .price-box{ display: block; width: 100%; }
+    .price-box .amt{ font-size: 26px; }
+    .value-strip .v{ min-width: 0; flex: 1 1 100%; }
+    .cta-row{ display: grid; grid-template-columns: 1fr; }
+    .cta-btn{ width: 100%; max-width: 100%; }
+    .contact-row{ gap: 12px; }
+    .final-line{ font-size: 12px; }
+  }
+
+  @media (max-width: 760px){ .navdots{ display:none; } }
   .brandmark svg{ width:22px; height:22px; }
   .scrollcue{
     position:absolute; bottom: 34px; left:50%; transform: translateX(-50%);
