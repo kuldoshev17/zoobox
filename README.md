@@ -116,32 +116,36 @@ Real ishlashi uchun:
    (`handle_prepare`, `handle_complete` va h.k.) API endpoint sifatida ulang — bu
    funksiyalarning skeleti tayyor, faqat DB bilan bog'lash qoladi.
 
-## Render'ga joylashtirish
+## Railway'ga joylashtirish
 
-Repository'dagi `render.yaml` Render Blueprint sifatida quyidagilarni yaratadi:
+Railway'da repository'dan ikkita service yarating:
 
-- `zoopet-web` — FastAPI, Mini App va admin panel;
-- `zoopet-bot` — Telegram long-polling background worker, faqat bitta instance;
-- `zoopet-db` — PostgreSQL.
+1. `zoopet-web` — repository root'dagi `railway.toml` ishlatiladi.
+2. `zoopet-bot` — service settings'da Config File Path sifatida `railway.bot.toml` ni tanlang.
 
-Render Dashboard'da **New > Blueprint** orqali repository'ni tanlang. Web service uchun
-`/api/health` health check va `alembic upgrade head` pre-deploy qadam sifatida berilgan.
-Quyidagi secret qiymatlarni Render'da kiriting:
+`zoopet-web` uchun Railway PostgreSQL service ulang va quyidagi environment qiymatlarni kiriting:
 
 ```text
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 BOT_TOKEN
+JWT_SECRET
 ADMIN_CHAT_ID
-MINIAPP_URL=https://zoopet-web.onrender.com/
+MINIAPP_URL=https://zoopet-web-production.up.railway.app/
 CLOUDINARY_CLOUD_NAME
 CLOUDINARY_API_KEY
 CLOUDINARY_API_SECRET
 ```
 
-`DATABASE_URL` Render PostgreSQL'dan avtomatik olinadi. Ilova `postgresql://` qiymatini
-`postgresql+psycopg://` formatiga moslaydi.
+Railway PostgreSQL URL'i `postgresql://` ko'rinishida berilsa ham, ilova uni psycopg uchun
+`postgresql+psycopg://` formatiga avtomatik moslaydi.
 
-Mavjud SQLite ma'lumotlarini import qilish uchun avval Render PostgreSQL schema migrationi
-ishga tushgan bo'lsin, so'ng local terminalda production `DATABASE_URL` bilan:
+Migrationni web service deployidan oldin bir marta ishga tushiring:
+
+```bash
+alembic upgrade head
+```
+
+Mavjud SQLite ma'lumotlarini PostgreSQL'ga local kompyuterdan import qiling:
 
 ```bash
 python -m backend.migrate_sqlite --source backend/zoopet.db --dry-run
@@ -149,16 +153,14 @@ python -m backend.migrate_sqlite --source backend/zoopet.db
 python -m backend.create_admin
 ```
 
-Product rasmlari production'da Cloudinary'ga yuklanadi. Render filesystem'i doimiy emas,
-shuning uchun `CLOUDINARY_*` qiymatlarini production'da to'ldiring. Bot deploy bo'lgach,
-BotFather'da Mini App URL sifatida web service'ning HTTPS URL'ini kiriting. Chat-list'dagi
-`Open` tugmasi BotFather'da alohida yoqiladi.
+`zoopet-bot` service uchun `BOT_TOKEN` va `MINIAPP_URL` yetarli. Telegram polling sababli bot
+service'ni bitta replica bilan qoldiring va BotFather'da ham shu HTTPS URL'ni Mini App URL sifatida kiriting.
 
 ## Keyingi qadamlar (production uchun tavsiyalar)
 
 - SQLite o'rniga PostgreSQL'ga o'tish (yuqori yuklama uchun).
 - Rasmlarni saqlash uchun S3/Cloudinary kabi xizmat ulash.
-- Serverni Railway.app, Render yoki VPS'ga joylashtirish.
+- Serverni Railway.app yoki VPS'ga joylashtirish.
 - HTTPS va domain sozlash.
 - Mobil ilova (Android/iOS) uchun bu API'dan foydalanib React Native yoki Flutter'da
   native ilova yaratish mumkin — API tayyor, faqat frontendni qo'shish kerak.
