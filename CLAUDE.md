@@ -29,7 +29,8 @@ There is no test suite, linter, or build step configured in this repo.
 - API: `http://127.0.0.1:8000/api/...`
 - Requires Python 3.9+ (code intentionally avoids PEP 604 `X | None` union syntax and uses `typing.Optional` instead, for compatibility with older interpreters).
 - `backend/main.py` and `bot/main.py` call `load_dotenv()` at the top before reading any `os.getenv(...)`, so `.env` is picked up automatically — no need to `export`/`set` vars manually.
-- There is no migration framework (no Alembic) — `models.Base.metadata.create_all(bind=engine)` in `backend/main.py` only creates missing tables, it never alters existing ones. After any `models.py` column/constraint change, delete `backend/zoopet.db` and re-run `python -m backend.seed` (safe — seed only touches categories/products, and checks `if count == 0` first).
+- PostgreSQL production uses Alembic migrations in `migrations/`; run `alembic upgrade head` before starting the app. `backend/main.py` does not create tables at import time. Local development keeps SQLite as the fallback when `DATABASE_URL` is unset, and `backend.seed` creates missing SQLite tables in that mode.
+- To preserve an existing SQLite database during cutover, set PostgreSQL `DATABASE_URL`, run `python -m backend.migrate_sqlite --source backend/zoopet.db --dry-run`, then run it without `--dry-run`. The importer is non-destructive and creates a `.migration-backup` copy.
 
 ## Architecture
 

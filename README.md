@@ -8,11 +8,12 @@ web-do'kon va admin panel.
 
 ```
 zoopet/
-├── backend/          FastAPI server (API + SQLite baza)
+├── backend/          FastAPI server (API + SQLite/PostgreSQL baza)
 │   ├── main.py        Ilova kirish nuqtasi
 │   ├── models.py       Baza jadvallari
 │   ├── schemas.py      API validatsiya sxemalari
-│   ├── database.py     SQLite ulanish
+│   ├── database.py     Baza ulanishi
+│   ├── migrate_sqlite.py SQLite'dan PostgreSQL'ga import
 │   ├── notify.py       Adminlarga Telegram orqali xabar yuborish
 │   ├── seed.py          Namuna ma'lumotlar (test uchun)
 │   └── routers/
@@ -29,6 +30,8 @@ zoopet/
 │   └── payme.py          Payme integratsiyasi (stub)
 ├── requirements.txt
 └── .env.example
+├── alembic.ini        PostgreSQL schema migration sozlamalari
+└── migrations/        Alembic migrationlari
 ```
 
 ## O'rnatish
@@ -39,12 +42,37 @@ pip install -r requirements.txt
 cp .env.example .env    # keyin .env faylini o'z ma'lumotlaringiz bilan to'ldiring
 ```
 
+`DATABASE_URL` bo'sh qoldirilsa, lokal ishlab chiqishda `backend/zoopet.db` SQLite bazasi ishlatiladi.
+Production uchun PostgreSQL URL kiriting:
+
+```env
+DATABASE_URL=postgresql+psycopg://user:password@host:5432/zoopet
+```
+
 ## Ishga tushirish
 
 **1. Bazani namuna ma'lumotlar bilan to'ldirish (bir marta):**
 ```bash
 python -m backend.seed
 ```
+
+PostgreSQL production bazasida avval schema migrationlarini ishga tushiring:
+
+```bash
+alembic upgrade head
+python -m backend.seed
+```
+
+Mavjud SQLite ma'lumotlarini PostgreSQL'ga ko'chirish uchun PostgreSQL `DATABASE_URL` o'rnatilgan holda,
+avval dry-run qiling, so'ng import qiling. Manba baza o'zgartirilmaydi va backup nusxasi yaratiladi:
+
+```bash
+python -m backend.migrate_sqlite --source backend/zoopet.db --dry-run
+python -m backend.migrate_sqlite --source backend/zoopet.db
+```
+
+Importdan oldin `backend/zoopet.db` nusxasini saqlang. Production'da Alembic migrationlari server ishga
+tushishidan oldin alohida release qadamida bajariladi; ilova startup paytida jadvallarni o'zi yaratmaydi.
 
 **2. Backend serverni ishga tushirish:**
 ```bash

@@ -9,10 +9,13 @@ import sys
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from .database import SessionLocal, engine
+from .database import DATABASE_URL, SessionLocal, engine
 from . import models
 
-models.Base.metadata.create_all(bind=engine)
+if DATABASE_URL.startswith("sqlite"):
+    models.Base.metadata.create_all(bind=engine)
+else:
+    print("ℹ️ PostgreSQL tanlandi: avval 'alembic upgrade head' ni ishga tushiring.")
 
 db = SessionLocal()
 

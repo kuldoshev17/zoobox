@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -55,7 +56,11 @@ def create_subscription(
 
     subscription = models.Subscription(customer_id=customer.id, plan_id=plan.id)
     db.add(subscription)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Sizda allaqachon faol obuna mavjud")
     db.refresh(subscription)
 
     notify_admin_new_subscription(subscription)

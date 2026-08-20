@@ -17,12 +17,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .database import engine
-from . import models
-from .routers import catalog, orders, admin_auth, customer_auth, subscriptions
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-# Jadvallarni yaratish (birinchi ishga tushirishda)
-models.Base.metadata.create_all(bind=engine)
+from .database import SessionLocal
+from .routers import catalog, orders, admin_auth, customer_auth, subscriptions
 
 app = FastAPI(title="ZooPet API", version="1.0.0")
 
@@ -99,7 +98,17 @@ app.include_router(subscriptions.router)
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "ZooPet API"}
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "service": "ZooPet API", "database": "ok"}
+    except SQLAlchemyError:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "service": "ZooPet API", "database": "unavailable"},
+        )
+    finally:
+        db.close()
 
 
 # Serve uploaded images
