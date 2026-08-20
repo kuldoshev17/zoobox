@@ -734,8 +734,10 @@ async function openEditImageModal(productId) {
     // element hujjatda mavjud emas, shuning uchun funksiya TypeError bilan
     // to'xtab, modal umuman ochilmasdi.
     document.getElementById('ei_title').textContent = `Rasm: ${product.name}`;
-    if(product.image_url && product.image_url.startsWith('uploads/')){
-      document.getElementById('ei_current_image').src = '/' + product.image_url;
+    if(product.image_url && (product.image_url.startsWith('uploads/') || /^https?:\/\//i.test(product.image_url))){
+      document.getElementById('ei_current_image').src = product.image_url.startsWith('uploads/')
+        ? '/' + product.image_url
+        : product.image_url;
       document.getElementById('ei_current_image').style.display = 'block';
       document.getElementById('ei_placeholder').style.display = 'none';
     }

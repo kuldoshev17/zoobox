@@ -5,6 +5,10 @@ from sqlalchemy.orm import sessionmaker
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "zoopet.db")
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgres://"):]
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgresql://"):]
 
 engine_options = {"pool_pre_ping": True}
 if DATABASE_URL.startswith("sqlite"):

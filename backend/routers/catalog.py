@@ -1,5 +1,7 @@
-from typing import Optional, List
+from io import BytesIO
+import os
 from pathlib import Path
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
@@ -149,6 +151,33 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _ALLOWED_IMAGE_EXTS = (".png", ".jpg", ".webp", ".gif")
 
 
+def _cloudinary_configured() -> bool:
+    return all(
+        os.getenv(name)
+        for name in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
+    )
+
+
+def _upload_to_cloudinary(contents: bytes, product_id: int) -> str:
+    import cloudinary
+    import cloudinary.uploader
+
+    cloudinary.config(
+        cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
+        api_key=os.environ["CLOUDINARY_API_KEY"],
+        api_secret=os.environ["CLOUDINARY_API_SECRET"],
+        secure=True,
+    )
+    result = cloudinary.uploader.upload(
+        BytesIO(contents),
+        public_id=f"zoopet/products/product-{product_id}",
+        overwrite=True,
+        invalidate=True,
+        resource_type="image",
+    )
+    return result["secure_url"]
+
+
 def _detect_image_ext(contents: bytes) -> Optional[str]:
     """Fayl imzosi (magic bytes) bo'yicha kengaytmani aniqlaydi."""
     if contents.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -200,20 +229,23 @@ async def upload_product_image(
     if not ext:
         raise HTTPException(400, "Faqat PNG, JPG, WEBP yoki GIF rasmlar yuklash mumkin")
 
-    upload_dir = Path(__file__).parent.parent / "uploads"
-    upload_dir.mkdir(exist_ok=True)
+    if _cloudinary_configured():
+        product.image_url = _upload_to_cloudinary(contents, product_id)
+    else:
+        upload_dir = Path(__file__).parent.parent / "uploads"
+        upload_dir.mkdir(exist_ok=True)
 
-    # Eski nusxalarni tozalaymiz — kengaytma o'zgarganda avval yetim fayl qolardi
-    for old_ext in _ALLOWED_IMAGE_EXTS:
-        old_path = upload_dir / f"product-{product_id}{old_ext}"
-        if old_path != upload_dir / f"product-{product_id}{ext}" and old_path.exists():
-            old_path.unlink()
+        # Eski nusxalarni tozalaymiz — kengaytma o'zgarganda avval yetim fayl qolardi
+        for old_ext in _ALLOWED_IMAGE_EXTS:
+            old_path = upload_dir / f"product-{product_id}{old_ext}"
+            if old_path != upload_dir / f"product-{product_id}{ext}" and old_path.exists():
+                old_path.unlink()
 
-    filename = f"product-{product_id}{ext}"
-    with open(upload_dir / filename, "wb") as f:
-        f.write(contents)
+        filename = f"product-{product_id}{ext}"
+        with open(upload_dir / filename, "wb") as f:
+            f.write(contents)
 
-    product.image_url = f"uploads/{filename}"
+        product.image_url = f"uploads/{filename}"
     db.commit()
     db.refresh(product)
 

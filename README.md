@@ -116,6 +116,44 @@ Real ishlashi uchun:
    (`handle_prepare`, `handle_complete` va h.k.) API endpoint sifatida ulang — bu
    funksiyalarning skeleti tayyor, faqat DB bilan bog'lash qoladi.
 
+## Render'ga joylashtirish
+
+Repository'dagi `render.yaml` Render Blueprint sifatida quyidagilarni yaratadi:
+
+- `zoopet-web` — FastAPI, Mini App va admin panel;
+- `zoopet-bot` — Telegram long-polling background worker, faqat bitta instance;
+- `zoopet-db` — PostgreSQL.
+
+Render Dashboard'da **New > Blueprint** orqali repository'ni tanlang. Web service uchun
+`/api/health` health check va `alembic upgrade head` pre-deploy qadam sifatida berilgan.
+Quyidagi secret qiymatlarni Render'da kiriting:
+
+```text
+BOT_TOKEN
+ADMIN_CHAT_ID
+MINIAPP_URL=https://zoopet-web.onrender.com/
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
+```
+
+`DATABASE_URL` Render PostgreSQL'dan avtomatik olinadi. Ilova `postgresql://` qiymatini
+`postgresql+psycopg://` formatiga moslaydi.
+
+Mavjud SQLite ma'lumotlarini import qilish uchun avval Render PostgreSQL schema migrationi
+ishga tushgan bo'lsin, so'ng local terminalda production `DATABASE_URL` bilan:
+
+```bash
+python -m backend.migrate_sqlite --source backend/zoopet.db --dry-run
+python -m backend.migrate_sqlite --source backend/zoopet.db
+python -m backend.create_admin
+```
+
+Product rasmlari production'da Cloudinary'ga yuklanadi. Render filesystem'i doimiy emas,
+shuning uchun `CLOUDINARY_*` qiymatlarini production'da to'ldiring. Bot deploy bo'lgach,
+BotFather'da Mini App URL sifatida web service'ning HTTPS URL'ini kiriting. Chat-list'dagi
+`Open` tugmasi BotFather'da alohida yoqiladi.
+
 ## Keyingi qadamlar (production uchun tavsiyalar)
 
 - SQLite o'rniga PostgreSQL'ga o'tish (yuqori yuklama uchun).

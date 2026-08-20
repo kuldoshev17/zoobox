@@ -47,7 +47,7 @@ _CSP = (
     "script-src 'self' https://telegram.org 'unsafe-inline'; "
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data:; "
+    "img-src 'self' https://res.cloudinary.com data:; "
     "connect-src 'self'; "
     "frame-ancestors 'self'; "
     "base-uri 'none'; "

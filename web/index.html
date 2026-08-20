@@ -1284,8 +1284,11 @@ function renderGrid(){
     const btnLabel = hasVariants ? t('btn_choose') : t('btn_add_cart');
     const act = hasVariants ? 'detail' : 'add';
     // Rasm yuklanmasa 📦 ga qaytamiz (avval buzilgan rasm belgisi qolardi)
-    const cardImg = p.image_url && p.image_url.startsWith('uploads/')
-      ? `<img src="/${encodeURI(p.image_url)}" alt="${esc(p.name)}" loading="lazy" decoding="async"
+    const imageUrl = p.image_url && (p.image_url.startsWith('uploads/') || /^https?:\/\//i.test(p.image_url))
+      ? (p.image_url.startsWith('uploads/') ? `/${encodeURI(p.image_url)}` : p.image_url)
+      : '';
+    const cardImg = imageUrl
+      ? `<img src="${esc(imageUrl)}" alt="${esc(p.name)}" loading="lazy" decoding="async"
               onerror="this.parentNode.textContent='📦'">`
       : '📦';
     return `

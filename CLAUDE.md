@@ -20,6 +20,11 @@ uvicorn backend.main:app --reload --port 8000 # run API + storefront + admin pan
 curl -X POST http://127.0.0.1:8000/api/admin/seed-default  # create default admin (admin/admin123), once
 
 python -m bot.main                            # run Telegram bot (needs backend running, separate terminal)
+
+# Render deployment (Blueprint: render.yaml)
+alembic upgrade head                            # run as the web service pre-deploy command
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+python -m bot.main                              # single background worker instance
 ```
 
 There is no test suite, linter, or build step configured in this repo.
@@ -28,6 +33,8 @@ There is no test suite, linter, or build step configured in this repo.
 - Admin panel: `http://127.0.0.1:8000/admin/`
 - API: `http://127.0.0.1:8000/api/...`
 - Requires Python 3.9+ (code intentionally avoids PEP 604 `X | None` union syntax and uses `typing.Optional` instead, for compatibility with older interpreters).
+- Render uses one web service (`uvicorn backend.main:app --host 0.0.0.0 --port $PORT`), one single-instance bot worker (`python -m bot.main`), and Render PostgreSQL. The web service runs `alembic upgrade head` as its pre-deploy command; do not run multiple polling workers.
+- Render's filesystem is ephemeral. Product uploads use Cloudinary when `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are configured; local development falls back to `backend/uploads`.
 - `backend/main.py` and `bot/main.py` call `load_dotenv()` at the top before reading any `os.getenv(...)`, so `.env` is picked up automatically — no need to `export`/`set` vars manually.
 - PostgreSQL production uses Alembic migrations in `migrations/`; run `alembic upgrade head` before starting the app. `backend/main.py` does not create tables at import time. Local development keeps SQLite as the fallback when `DATABASE_URL` is unset, and `backend.seed` creates missing SQLite tables in that mode.
 - To preserve an existing SQLite database during cutover, set PostgreSQL `DATABASE_URL`, run `python -m backend.migrate_sqlite --source backend/zoopet.db --dry-run`, then run it without `--dry-run`. The importer is non-destructive and creates a `.migration-backup` copy.
